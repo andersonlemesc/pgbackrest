@@ -1,0 +1,4 @@
+# Nunca commitar arquivos com credenciais reais
+pgbackrest.conf.local
+.env
+*.log
