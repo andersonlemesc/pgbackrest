@@ -74,15 +74,78 @@ docker exec <container_id> su -c 'pgbackrest --stanza=main check' postgres
 docker exec <container_id> tail -f /var/log/pgbackrest/cron.log
 ```
 
-## Restore com PITR
+## Restore
 
-Para restaurar em um ponto específico no tempo sem comprometer o banco em produção,
-suba um novo container com volume separado e execute:
+> **Importante:** o pgBackRest restaura o cluster inteiro — não banco por banco.
+> Sempre restaure em um container separado para não comprometer a produção.
+
+### Restore completo (último backup)
 
 ```bash
-docker exec <novo_container> su -c \
-  'pgbackrest --stanza=main restore --target="YYYY-MM-DD HH:MM:SS" --target-action=promote --type=time' \
+# 1. Sobe container novo com volume vazio, sem iniciar o postgres
+docker run -d \
+  --name postgres-restore \
+  -v postgres_restore:/var/lib/postgresql/data \
+  -v /caminho/local/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf \
+  SEU_USUARIO/postgres-pgbackrest:15 sleep infinity
+
+# 2. Executa o restore (baixa do MinIO)
+docker exec postgres-restore su -c \
+  'pgbackrest --stanza=main restore' postgres
+
+# 3. Sobe o postgres dentro do container
+docker exec -d postgres-restore \
+  su -c 'postgres -D /var/lib/postgresql/data' postgres
+
+# 4. Conecta para validar
+docker exec -it postgres-restore psql -U postgres
+```
+
+### Restore com PITR (ponto específico no tempo)
+
+Útil para recuperar dados antes de um DELETE ou UPDATE acidental:
+
+```bash
+# 1. Sobe container novo com volume vazio
+docker run -d \
+  --name postgres-restore \
+  -v postgres_restore:/var/lib/postgresql/data \
+  -v /caminho/local/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf \
+  SEU_USUARIO/postgres-pgbackrest:15 sleep infinity
+
+# 2. Restaura no ponto exato desejado
+docker exec postgres-restore su -c \
+  'pgbackrest --stanza=main restore --type=time --target="YYYY-MM-DD HH:MM:SS" --target-action=promote' \
   postgres
+
+# 3. Sobe o postgres
+docker exec -d postgres-restore \
+  su -c 'postgres -D /var/lib/postgresql/data' postgres
+```
+
+### Recuperar apenas um banco
+
+Após o restore em container separado, extraia apenas o banco desejado:
+
+```bash
+# Exporta o banco do container de restore
+docker exec postgres-restore pg_dump \
+  -U postgres -d NOME_DO_BANCO -F c -f /tmp/banco.dump
+
+# Copia o dump para o host
+docker cp postgres-restore:/tmp/banco.dump ./
+
+# Importa no postgres de produção
+docker cp banco.dump <container_producao>:/tmp/
+docker exec <container_producao> pg_restore \
+  -U postgres -d NOME_DO_BANCO /tmp/banco.dump
+```
+
+### Limpeza após o restore de teste
+
+```bash
+docker rm -f postgres-restore
+docker volume rm postgres_restore
 ```
 
 ## Estrutura do repositório no MinIO
