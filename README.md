@@ -202,8 +202,6 @@ Crie os volumes antes de subir a stack:
 
 ```bash
 docker volume create postgres_data
-docker volume create pg_extensions
-docker volume create pg_libs
 docker volume create pgbackrest_log
 ```
 

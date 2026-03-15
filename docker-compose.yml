@@ -22,8 +22,6 @@ services:
       - app_network
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - pg_extensions:/usr/share/postgresql/15/extension
-      - pg_libs:/usr/lib/postgresql/15/lib
       - pgbackrest_log:/var/log/pgbackrest
     deploy:
       mode: replicated
@@ -38,10 +36,6 @@ services:
 
 volumes:
   postgres_data:
-    external: true
-  pg_extensions:
-    external: true
-  pg_libs:
     external: true
   pgbackrest_log:
     external: true
