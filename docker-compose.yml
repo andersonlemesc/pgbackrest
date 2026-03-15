@@ -14,6 +14,10 @@ services:
       - 5432:5432
     environment:
       - POSTGRES_PASSWORD=SUA_SENHA
+      # Cron em UTC. BRT = UTC-3: para rodar às 01h local use 04h UTC (padrão abaixo).
+      - PG_FULL_CRON=0 4 * * 0
+      - PG_INCR_CRON=0 4 * * 1-6
+      - PG_CHECK_CRON=0 */12 * * *
     networks:
       - app_network
     volumes:

@@ -36,10 +36,16 @@ if [ "$STANZA_OK" = false ]; then
 fi
 
 # Configura cron de backups do pgbackrest
+# Horários em UTC. Para BRT (UTC-3): 01h local = 04h UTC.
+# Sobrescreva via variáveis de ambiente na stack.
+PG_FULL_CRON="${PG_FULL_CRON:-0 4 * * 0}"
+PG_INCR_CRON="${PG_INCR_CRON:-0 4 * * 1-6}"
+PG_CHECK_CRON="${PG_CHECK_CRON:-0 */12 * * *}"
+
 echo "Configurando cron de backups..."
-echo '0 1 * * 0 postgres pgbackrest --stanza=main backup --type=full >> /var/log/pgbackrest/cron.log 2>&1' > /etc/cron.d/pgbackrest
-echo '0 1 * * 1-6 postgres pgbackrest --stanza=main backup --type=incr >> /var/log/pgbackrest/cron.log 2>&1' >> /etc/cron.d/pgbackrest
-echo '0 */6 * * * postgres pgbackrest --stanza=main check >> /var/log/pgbackrest/cron.log 2>&1' >> /etc/cron.d/pgbackrest
+echo "$PG_FULL_CRON postgres pgbackrest --stanza=main backup --type=full >> /var/log/pgbackrest/cron.log 2>&1" > /etc/cron.d/pgbackrest
+echo "$PG_INCR_CRON postgres pgbackrest --stanza=main backup --type=incr >> /var/log/pgbackrest/cron.log 2>&1" >> /etc/cron.d/pgbackrest
+echo "$PG_CHECK_CRON postgres pgbackrest --stanza=main check >> /var/log/pgbackrest/cron.log 2>&1" >> /etc/cron.d/pgbackrest
 chmod 0644 /etc/cron.d/pgbackrest
 
 if cron; then
