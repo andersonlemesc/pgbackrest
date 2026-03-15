@@ -42,16 +42,16 @@ O pgBackRest é uma solução open-source de backup para PostgreSQL desenvolvida
 
 ## 2. Decisão Arquitetural: Cron dentro do Container
 
-Um container separado para o cron de backups não funciona corretamente com o pgBackRest:
+O pgBackRest suporta múltiplas arquiteturas — incluindo um container separado para backups, usando SSH entre os containers. A arquitetura escolhida aqui concentra o cron dentro do próprio container do Postgres por simplicidade operacional:
 
-| Requisito do pgBackRest | Container separado | Dentro do Postgres |
+| Critério | Container separado (via SSH) | Dentro do Postgres (escolhido) |
 |---|---|---|
-| Acesso ao socket `/var/run/postgresql` | Não — sockets não cruzam containers | Sim — acesso direto |
-| Acesso direto aos arquivos de dados | Parcial (volume `:ro` insuficiente) | Sim — acesso completo |
-| `pgbackrest backup` funciona sem SSH | Não — exigiria configuração SSH | Sim |
-| Complexidade operacional | Alta | Baixa |
+| Acesso ao socket Unix | Requer configuração SSH | Direto |
+| Complexidade de configuração | Alta | Baixa |
+| Isolamento de responsabilidades | Maior | Menor |
+| Dependências externas | SSH entre containers | Nenhuma |
 
-O pgBackRest precisa rodar no mesmo processo que o Postgres para ter acesso ao socket Unix e ao data directory. Por isso o cron de backups foi incorporado ao `entrypoint.sh` do próprio container do Postgres.
+Esta foi a escolha adotada neste template. Para ambientes que exijam maior isolamento, é possível configurar o pgBackRest com SSH em containers separados — consulte a [documentação oficial](https://pgbackrest.org/user-guide.html).
 
 ---
 
